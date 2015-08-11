@@ -145,6 +145,16 @@ class LuceneQuery
       } * " "
     end
   end
+
+  class PhraseField
+    def initialize(key, val)
+      @key, @val = key, val
+    end
+
+    def to_lucene
+      @key.to_lucene + ":\"#{@val}\""
+    end
+  end
   
   ## DSL Helpers
   class QueryBuilder
@@ -167,6 +177,7 @@ class LuceneQuery
     def Required(term) Required.new(term) end
     def Prohibit(term) Prohibit.new(term) end
     def Fuzzy(*args) Fuzzy.new(*args) end
+    def PhraseField(key, val) PhraseField.new(key, val) end
   end
   
   def initialize(&block)
