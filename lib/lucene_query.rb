@@ -1,7 +1,14 @@
 class LuceneQuery
   ## Syntax Nodes
   ::String.class_eval do
-    def to_lucene; "'#{escape_lucene.downcase_ending_keywords}'" end
+    def to_lucene(quotes = true, escape = true) 
+      query = escape_lucene.downcase_ending_keywords
+      if escape
+        quotes ? "'#{query}'" : query
+      else
+        quotes ? "'#{self.escape_phrase_lucene}'" : self.escape_phrase_lucene
+      end
+    end
     
     def parens
       if self =~ /^\s*$/
@@ -19,7 +26,17 @@ class LuceneQuery
       | \|\|                      # Boolean ||
       )
     /x unless defined?(RE_ESCAPE_LUCENE)
-    
+
+    RE_ESCAPE_PHRASE_LUCENE = /
+      ( ["]
+      | \\"
+      )
+    /x unless defined?(RE_ESCAPE_PHRASE_LUCENE)
+
+    def escape_phrase_lucene
+      gsub(RE_ESCAPE_PHRASE_LUCENE) { |m| "\\#{m}" }
+    end
+
     def escape_lucene
       gsub(RE_ESCAPE_LUCENE) { |m| "\\#{m}" }
     end
@@ -147,12 +164,12 @@ class LuceneQuery
   end
 
   class PhraseField
-    def initialize(key, val)
-      @key, @val = key, val
+    def initialize(key, val, escape = true)
+      @key, @val, @escape = key, val, escape
     end
 
     def to_lucene
-      @key.to_lucene + ":\"#{@val}\""
+      @key.to_lucene + ":" + "\"#{@val.to_lucene(false, @escape)}\""
     end
   end
   
@@ -177,7 +194,7 @@ class LuceneQuery
     def Required(term) Required.new(term) end
     def Prohibit(term) Prohibit.new(term) end
     def Fuzzy(*args) Fuzzy.new(*args) end
-    def PhraseField(key, val) PhraseField.new(key, val) end
+    def PhraseField(key, val, escape) PhraseField.new(key, val, escape) end
   end
   
   def initialize(&block)
